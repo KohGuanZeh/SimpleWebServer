@@ -5,8 +5,7 @@
 #pragma comment(lib, "Ws2_32.lib")
 
 int init_winsock();
-int init_server_socket(SOCKET);
-int close_server_socket(SOCKET);
+int init_server_socket(SOCKET *);
 
 int main() {
   if (init_winsock()) {
@@ -14,7 +13,7 @@ int main() {
   }
 
   SOCKET server_socket = INVALID_SOCKET;
-  if (init_server_socket(server_socket)) {
+  if (init_server_socket(&server_socket)) {
     return 1;
   }
 
@@ -69,7 +68,7 @@ int init_winsock() {
  * @param listen_socket SOCKET to initialize the server listening socket.
  * @return Returns 0 on success, 1 on failure.
  */
-int init_server_socket(SOCKET server_socket) {
+int init_server_socket(SOCKET *server_socket) {
   char const *const HTTP_PORT = "80";
 
   struct addrinfo *addr_info = NULL;
@@ -90,10 +89,10 @@ int init_server_socket(SOCKET server_socket) {
   }
 
   // Create socket for server to listen for client connections
-  server_socket = socket(addr_info->ai_family, addr_info->ai_socktype,
-                         addr_info->ai_protocol);
+  *server_socket = socket(addr_info->ai_family, addr_info->ai_socktype,
+                          addr_info->ai_protocol);
 
-  if (server_socket == INVALID_SOCKET) {
+  if (*server_socket == INVALID_SOCKET) {
     printf("Error at socket(): %ld\n", WSAGetLastError());
     freeaddrinfo(addr_info);
     WSACleanup();
@@ -102,11 +101,11 @@ int init_server_socket(SOCKET server_socket) {
 
   // Setup the TCP listening socket
   wsaResult =
-      bind(server_socket, addr_info->ai_addr, (int)addr_info->ai_addrlen);
+      bind(*server_socket, addr_info->ai_addr, (int)addr_info->ai_addrlen);
   if (wsaResult == SOCKET_ERROR) {
     printf("bind failed with error: %d\n", WSAGetLastError());
     freeaddrinfo(addr_info);
-    closesocket(server_socket);
+    closesocket(*server_socket);
     WSACleanup();
     return 1;
   }
@@ -115,9 +114,9 @@ int init_server_socket(SOCKET server_socket) {
   freeaddrinfo(addr_info);
 
   // Listen on a socket
-  if (listen(server_socket, SOMAXCONN) == SOCKET_ERROR) {
+  if (listen(*server_socket, SOMAXCONN) == SOCKET_ERROR) {
     printf("Listen failed with error: %ld\n", WSAGetLastError());
-    closesocket(server_socket);
+    closesocket(*server_socket);
     WSACleanup();
     return 1;
   }
