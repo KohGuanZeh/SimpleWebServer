@@ -27,6 +27,38 @@ int main() {
     return EXIT_FAILURE;
   }
 
+  // Following recv specification of int
+  const int BUFFER_LEN = 512;
+  char recv_buffer[BUFFER_LEN];
+  int recv_result;
+  int send_result;
+
+  // Receive until the peer shuts down the connection
+  do {
+    recv_result = recv(client_socket, recv_buffer, BUFFER_LEN, 0);
+    if (recv_result > 0) {
+      printf("Bytes received: %d\n", recv_result);
+
+      // Echo the buffer back to the sender
+      send_result = send(client_socket, recv_buffer, recv_result, 0);
+      if (send_result == SOCKET_ERROR) {
+        printf("send failed: %d\n", WSAGetLastError());
+        closesocket(client_socket);
+        WSACleanup();
+        return 1;
+      }
+      printf("Bytes sent: %d\n", send_result);
+    } else if (recv_result == 0) {
+      printf("Client connection closing...\n");
+    } else {
+      printf("recv failed: %d\n", WSAGetLastError());
+      closesocket(client_socket);
+      WSACleanup();
+      return 1;
+    }
+
+  } while (recv_result > 0);
+
   // Shutdown the send half of the connection since no more data will be sent
   int wsaResult = shutdown(client_socket, SD_SEND);
   if (wsaResult == SOCKET_ERROR) {
@@ -35,9 +67,8 @@ int main() {
     WSACleanup();
     return EXIT_FAILURE;
   }
-  closesocket(client_socket);
 
-  // Close socket after implementation
+  closesocket(client_socket);
   closesocket(server_socket);
 
   WSACleanup();
