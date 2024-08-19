@@ -9,12 +9,12 @@ int init_server_socket(SOCKET *);
 
 int main() {
   if (init_winsock()) {
-    return 1;
+    return EXIT_FAILURE;
   }
 
   SOCKET server_socket = INVALID_SOCKET;
   if (init_server_socket(&server_socket)) {
-    return 1;
+    return EXIT_FAILURE;
   }
 
   // Accept client socket
@@ -24,7 +24,7 @@ int main() {
     printf("accept failed: %d\n", WSAGetLastError());
     closesocket(server_socket);
     WSACleanup();
-    return 1;
+    return EXIT_FAILURE;
   }
 
   // Shutdown the send half of the connection since no more data will be sent
@@ -33,7 +33,7 @@ int main() {
     printf("shutdown failed: %d\n", WSAGetLastError());
     closesocket(client_socket);
     WSACleanup();
-    return 1;
+    return EXIT_FAILURE;
   }
   closesocket(client_socket);
 
@@ -42,7 +42,7 @@ int main() {
 
   WSACleanup();
 
-  return 0;
+  return EXIT_SUCCESS;
 }
 
 /**
