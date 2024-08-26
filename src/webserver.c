@@ -7,7 +7,7 @@
 #define BUFFER_LEN 512
 
 int init_winsock();
-int init_server_socket(SOCKET *);
+SOCKET init_server_socket();
 int handle_connection(SOCKET *);
 int handle_request(SOCKET *);
 
@@ -16,14 +16,17 @@ int main() {
     return EXIT_FAILURE;
   }
 
-  SOCKET server_socket = INVALID_SOCKET;
-  if (init_server_socket(&server_socket)) {
+  SOCKET server_socket = init_server_socket();
+  if (server_socket == INVALID_SOCKET) {
+    WSACleanup();
     return EXIT_FAILURE;
   }
 
   while (TRUE) {
     if (handle_connection(&server_socket)) {
-      break;
+      closesocket(server_socket);
+      WSACleanup();
+      return EXIT_FAILURE;
     }
   }
 
@@ -53,10 +56,10 @@ int init_winsock() {
 /**
  * @brief Initializes the server listening socket.
  *
- * @param server_socket `SOCKET *` to initialize the server listening socket.
- * @return Returns 0 on success, 1 on failure.
+ * @return Returns newly created server listening socket, on success,
+ * `INVALID_SOCKET` on failure.
  */
-int init_server_socket(SOCKET *server_socket) {
+SOCKET init_server_socket() {
   char const *const HTTP_PORT = "80";
 
   struct addrinfo *addr_info = NULL;
@@ -72,44 +75,41 @@ int init_server_socket(SOCKET *server_socket) {
   int wsaResult = getaddrinfo(NULL, HTTP_PORT, &hints, &addr_info);
   if (wsaResult != 0) {
     printf("getaddrinfo failed: %d\n", wsaResult);
-    WSACleanup();
-    return 1;
+    return INVALID_SOCKET;
   }
 
   // Create socket for server to listen for client connections
-  *server_socket = socket(addr_info->ai_family, addr_info->ai_socktype,
-                          addr_info->ai_protocol);
+  SOCKET server_socket = INVALID_SOCKET;
+  server_socket = socket(addr_info->ai_family, addr_info->ai_socktype,
+                         addr_info->ai_protocol);
 
-  if (*server_socket == INVALID_SOCKET) {
+  if (server_socket == INVALID_SOCKET) {
     printf("Error at socket(): %ld\n", WSAGetLastError());
     freeaddrinfo(addr_info);
-    WSACleanup();
-    return 1;
+    return INVALID_SOCKET;
   }
 
   // Setup the TCP listening socket
   wsaResult =
-      bind(*server_socket, addr_info->ai_addr, (int)addr_info->ai_addrlen);
+      bind(server_socket, addr_info->ai_addr, (int)addr_info->ai_addrlen);
   if (wsaResult == SOCKET_ERROR) {
     printf("bind failed with error: %d\n", WSAGetLastError());
     freeaddrinfo(addr_info);
-    closesocket(*server_socket);
-    WSACleanup();
-    return 1;
+    closesocket(server_socket);
+    return INVALID_SOCKET;
   }
 
   // Free memory allocated by getaddrinfo()
   freeaddrinfo(addr_info);
 
   // Listen on a socket
-  if (listen(*server_socket, SOMAXCONN) == SOCKET_ERROR) {
+  if (listen(server_socket, SOMAXCONN) == SOCKET_ERROR) {
     printf("Listen failed with error: %ld\n", WSAGetLastError());
-    closesocket(*server_socket);
-    WSACleanup();
-    return 1;
+    closesocket(server_socket);
+    return INVALID_SOCKET;
   }
 
-  return 0;
+  return server_socket;
 }
 
 /**
@@ -129,6 +129,7 @@ int handle_connection(SOCKET *server_socket) {
     // Client Socket cleanup done on error.
     // Each time request fails, server will stop.
     // Todo: Create an enum to check if server socket should close.
+    closesocket(client_socket);
     return 1;
   }
 
@@ -139,7 +140,6 @@ int handle_connection(SOCKET *server_socket) {
   }
 
   closesocket(client_socket);
-  WSACleanup();
   return 0;
 }
 
@@ -150,7 +150,6 @@ int handle_connection(SOCKET *server_socket) {
  * @return Returns 0 on success, 1 on failure.
  */
 int handle_request(SOCKET *client_socket) {
-  // Following recv specification of int
   char recv_buffer[BUFFER_LEN];
   int recv_result;
   int send_result;
@@ -165,8 +164,6 @@ int handle_request(SOCKET *client_socket) {
       send_result = send(*client_socket, recv_buffer, recv_result, 0);
       if (send_result == SOCKET_ERROR) {
         printf("send failed: %d\n", WSAGetLastError());
-        closesocket(*client_socket);
-        WSACleanup();
         return 1;
       }
       printf("Bytes sent: %d\n", send_result);
@@ -174,12 +171,12 @@ int handle_request(SOCKET *client_socket) {
       printf("Client connection closing...\n");
     } else {
       printf("recv failed: %d\n", WSAGetLastError());
-      closesocket(*client_socket);
-      WSACleanup();
       return 1;
     }
 
-  } while (recv_result > 0);
+  } while (recv_result >= BUFFER_LEN);
+
+  printf("Done with Client request.\n");
 
   return 0;
 }
