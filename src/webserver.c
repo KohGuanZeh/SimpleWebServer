@@ -137,6 +137,8 @@ int handle_connection(SOCKET *server_socket) {
   int wsaResult = shutdown(client_socket, SD_SEND);
   if (wsaResult == SOCKET_ERROR) {
     printf("shutdown failed: %d\n", WSAGetLastError());
+    closesocket(client_socket);
+    return 1;
   }
 
   closesocket(client_socket);
