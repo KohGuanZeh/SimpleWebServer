@@ -4,12 +4,21 @@
 
 #pragma comment(lib, "Ws2_32.lib")
 
-#define BUFFER_LEN 512
+// Set 8KB Buffer Length
+#define BUFFER_LEN 8192
+
+typedef struct {
+  char *http_method;
+  char *path;
+  char *http_version;
+} Request;
 
 int init_winsock();
 SOCKET init_server_socket();
 int handle_connection(SOCKET *);
 int handle_request(SOCKET *);
+Request *parse_request(char *, int);
+int handle_response(SOCKET *);
 
 int main() {
   if (init_winsock()) {
@@ -146,15 +155,14 @@ int handle_connection(SOCKET *server_socket) {
 }
 
 /**
- * @brief Handle request of client socket
+ * @brief Handle request of client socket.
  *
  * @param client_socket `SOCKET *` for the client socket.
  * @return Returns 0 on success, 1 on failure.
  */
 int handle_request(SOCKET *client_socket) {
-  char recv_buffer[BUFFER_LEN];
+  char recv_buffer[BUFFER_LEN + 1];
   int recv_result;
-  int send_result;
 
   // Receive until the peer shuts down the connection
   do {
@@ -162,13 +170,15 @@ int handle_request(SOCKET *client_socket) {
     if (recv_result > 0) {
       printf("Bytes received: %d\n", recv_result);
 
-      // Echo the buffer back to the sender
-      send_result = send(*client_socket, recv_buffer, recv_result, 0);
-      if (send_result == SOCKET_ERROR) {
-        printf("send failed: %d\n", WSAGetLastError());
+      // Set to null character.
+      recv_buffer[BUFFER_LEN] = 0;
+      printf("Received Request: %s", recv_buffer);
+
+      if (handle_response(client_socket)) {
+        printf("Failed to respond.\n");
         return 1;
       }
-      printf("Bytes sent: %d\n", send_result);
+
     } else if (recv_result == 0) {
       printf("Client connection closing...\n");
     } else {
@@ -178,7 +188,38 @@ int handle_request(SOCKET *client_socket) {
 
   } while (recv_result >= BUFFER_LEN);
 
-  printf("Done with Client request.\n");
-
   return 0;
+}
+
+/**
+ * @brief Handle parsing of request.
+ *
+ * @param recv_buffer `char *` that is received by the socket.
+ * @return Returns `Request *` containing information of the request.
+ */
+Request *parse_request(char *recv_buffer, int buffer_length) {
+  Request *request_ptr;
+  request_ptr->http_method = NULL;
+  request_ptr->path = NULL;
+  request_ptr->http_version = NULL;
+}
+
+/**
+ * @brief Handle creation and sending of response.
+ *
+ * @param client_socket `SOCKET *` for the client socket.
+ * @return Returns 0 on success, 1 on failure.
+ */
+int handle_response(SOCKET *client_socket) {
+  char *response_buffer;
+  int response_size;
+
+  // Echo the buffer back to the sender
+  // Need to andle URI encoding x
+  int send_result = send(*client_socket, response_buffer, response_size, 0);
+  if (send_result == SOCKET_ERROR) {
+    printf("send failed: %d\n", WSAGetLastError());
+    return 1;
+  }
+  printf("Bytes sent: %d\n", send_result);
 }
