@@ -2,6 +2,8 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 
+#include "strutils.h"
+
 #pragma comment(lib, "Ws2_32.lib")
 
 // Set 8KB Buffer Length
@@ -93,7 +95,7 @@ SOCKET init_server_socket() {
                          addr_info->ai_protocol);
 
   if (server_socket == INVALID_SOCKET) {
-    printf("Error at socket(): %ld\n", WSAGetLastError());
+    printf("Error at socket(): %d\n", WSAGetLastError());
     freeaddrinfo(addr_info);
     return INVALID_SOCKET;
   }
@@ -113,7 +115,7 @@ SOCKET init_server_socket() {
 
   // Listen on a socket
   if (listen(server_socket, SOMAXCONN) == SOCKET_ERROR) {
-    printf("Listen failed with error: %ld\n", WSAGetLastError());
+    printf("Listen failed with error: %d\n", WSAGetLastError());
     closesocket(server_socket);
     return INVALID_SOCKET;
   }
@@ -197,12 +199,7 @@ int handle_request(SOCKET *client_socket) {
  * @param recv_buffer `char *` that is received by the socket.
  * @return Returns `Request *` containing information of the request.
  */
-Request *parse_request(char *recv_buffer, int buffer_length) {
-  Request *request_ptr;
-  request_ptr->http_method = NULL;
-  request_ptr->path = NULL;
-  request_ptr->http_version = NULL;
-}
+Request *parse_request(char *recv_buffer, int buffer_length) { return NULL; }
 
 /**
  * @brief Handle creation and sending of response.
@@ -211,8 +208,8 @@ Request *parse_request(char *recv_buffer, int buffer_length) {
  * @return Returns 0 on success, 1 on failure.
  */
 int handle_response(SOCKET *client_socket) {
-  char *response_buffer;
-  int response_size;
+  char *response_buffer = NULL;
+  int response_size = 0;
 
   // Echo the buffer back to the sender
   // Need to andle URI encoding x
@@ -222,4 +219,5 @@ int handle_response(SOCKET *client_socket) {
     return 1;
   }
   printf("Bytes sent: %d\n", send_result);
+  return 0;
 }

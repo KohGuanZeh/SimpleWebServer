@@ -53,7 +53,5 @@
   "C_Cpp_Runner.showCompilationTime": false,
   "C_Cpp_Runner.useLinkTimeOptimization": false,
   "C_Cpp_Runner.msvcSecureNoWarnings": false,
-  "C_Cpp.formatting": "clangFormat",
-  "C_Cpp.clang_format_fallbackStyle": "Google",
-  "C_Cpp.default.compilerPath": "cl.exe"
+  "editor.tabSize": 2
 }
