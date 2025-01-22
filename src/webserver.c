@@ -4,8 +4,6 @@
 
 #include "strutils.h"
 
-#pragma comment(lib, "Ws2_32.lib")
-
 // Set 8KB Buffer Length
 #define BUFFER_LEN 8192
 
@@ -21,6 +19,7 @@ int handle_connection(SOCKET *);
 int handle_request(SOCKET *);
 Request *parse_request(char *, int);
 int handle_response(SOCKET *);
+void cleanup_request(Request *);
 
 int main() {
   if (init_winsock()) {
@@ -176,6 +175,18 @@ int handle_request(SOCKET *client_socket) {
       recv_buffer[BUFFER_LEN] = 0;
       printf("Received Request: %s", recv_buffer);
 
+      Request *req = parse_request(recv_buffer, recv_result);
+      if (req == NULL) {
+        printf("Failed to parse request");
+        return 1;
+      }
+
+      printf("%s\n", req->http_method);
+      printf("%s\n", req->http_version);
+      printf("%s\n\n", req->path);
+
+      cleanup_request(req);
+
       if (handle_response(client_socket)) {
         printf("Failed to respond.\n");
         return 1;
@@ -199,7 +210,41 @@ int handle_request(SOCKET *client_socket) {
  * @param recv_buffer `char *` that is received by the socket.
  * @return Returns `Request *` containing information of the request.
  */
-Request *parse_request(char *recv_buffer, int buffer_length) { return NULL; }
+Request *parse_request(char *recv_buffer, int buffer_length) {
+  if (recv_buffer == NULL) {
+    return NULL;
+  }
+
+  Request *req = malloc(sizeof(Request));
+  if (req == NULL) {
+    return NULL;
+  }
+  req->http_method = NULL;
+  req->http_version = NULL;
+  req->path = NULL;
+
+  char *next_buffer = split_string(recv_buffer, "\n");
+  char *req_buffer = recv_buffer;
+  recv_buffer = next_buffer;
+
+  char *next_req_param = split_string(req_buffer, " ");
+  req->http_method = malloc(strlen(req_buffer) + 1);
+  strcpy(req->http_method, req_buffer);
+  req_buffer = next_req_param;
+
+  next_req_param = split_string(req_buffer, " ");
+  req->path = malloc(strlen(req_buffer) + 1);
+  strcpy(req->path, req_buffer);
+  req->http_version = malloc(strlen(next_req_param) + 1);
+  strcpy(req->http_version, next_req_param);
+
+  if (req->http_method == NULL || req->http_version == NULL ||
+      req->path == NULL) {
+    cleanup_request(req);
+    return NULL;
+  }
+  return req;
+}
 
 /**
  * @brief Handle creation and sending of response.
@@ -208,16 +253,22 @@ Request *parse_request(char *recv_buffer, int buffer_length) { return NULL; }
  * @return Returns 0 on success, 1 on failure.
  */
 int handle_response(SOCKET *client_socket) {
-  char *response_buffer = NULL;
-  int response_size = 0;
+  char *response_buffer = "HTTP/1.0 200 OK\nContent-Length: 5\n\nHello";
+  // int response_size = 0;
 
-  // Echo the buffer back to the sender
-  // Need to andle URI encoding x
-  int send_result = send(*client_socket, response_buffer, response_size, 0);
+  int send_result =
+      send(*client_socket, response_buffer, strlen(response_buffer) + 1, 0);
   if (send_result == SOCKET_ERROR) {
     printf("send failed: %d\n", WSAGetLastError());
     return 1;
   }
   printf("Bytes sent: %d\n", send_result);
   return 0;
+}
+
+void cleanup_request(Request *req) {
+  free(req->http_method);
+  free(req->http_version);
+  free(req->path);
+  free(req);
 }
