@@ -14,12 +14,18 @@ typedef struct {
   char *http_version;
 } Request;
 
+typedef struct {
+  char *content;
+  size_t content_length;
+} ResponseBody;
+
 int init_winsock();
 SOCKET init_server_socket();
 int handle_connection(SOCKET *);
 int handle_request(SOCKET *);
 Request *parse_request(char *, int);
 int handle_response(SOCKET *);
+ResponseBody *read_file(char *);
 void cleanup_request(Request *);
 
 int main() {
@@ -274,12 +280,19 @@ void cleanup_request(Request *req) {
   free(req);
 }
 
-char *read_file(char *file_name) {
+ResponseBody *read_file(char *file_name) {
+  ResponseBody *res_body = malloc(sizeof(ResponseBody));
+  if (res_body == NULL) {
+    return NULL;
+  }
+
   FILE *fp = fopen(file_name, "r");
   if (fp == NULL) {
     return NULL;
   }
+
   if (fseek(fp, 0, SEEK_END) != 0) {
+    // Error encountered on fseek
     fclose(fp);
     return NULL;
   }
@@ -288,21 +301,29 @@ char *read_file(char *file_name) {
     fclose(fp);
     return NULL;
   }
-  char *buff = malloc(sizeof(char) * buff_size + 1);
-  if (buff == NULL) {
+
+  res_body->content = malloc(sizeof(char) * buff_size + 1);
+  res_body->content_length = malloc(sizeof(size_t));
+
+  if (res_body->content == NULL || res_body->content_length == NULL) {
     fclose(fp);
     return NULL;
   }
+
   if (fseek(fp, 0, SEEK_SET) != 0) {
+    // Error encountered on fseek
     fclose(fp);
     return NULL;
   }
-  size_t len = fread(buff, sizeof(char), buff_size, fp);
+
+  size_t len = fread(res_body->content, sizeof(char), buff_size, fp);
   if (ferror(fp)) {
     printf("Error reading file: %s", file_name);
     fclose(fp);
     return NULL;
   }
-  buff[len + 1] = 0;
-  return buff;
+
+  res_body->content[len++] = 0;
+  res_body->content_length = len;
+  return res_body;
 }
