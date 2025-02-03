@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
 
@@ -253,7 +254,7 @@ Request *parse_request(char *recv_buffer, int buffer_length) {
  * @return Returns 0 on success, 1 on failure.
  */
 int handle_response(SOCKET *client_socket) {
-  char *response_buffer = "HTTP/1.0 200 OK\nContent-Length: 5\n\nHello";
+  char *response_buffer = "HTTP/1.0 200 OK\r\nContent-Length: 5\r\n\r\nHello";
   // int response_size = 0;
 
   int send_result =
@@ -271,4 +272,37 @@ void cleanup_request(Request *req) {
   free(req->http_version);
   free(req->path);
   free(req);
+}
+
+char *read_file(char *file_name) {
+  FILE *fp = fopen(file_name, "r");
+  if (fp == NULL) {
+    return NULL;
+  }
+  if (fseek(fp, 0, SEEK_END) != 0) {
+    fclose(fp);
+    return NULL;
+  }
+  long buff_size = ftell(fp);
+  if (buff_size == -1) {
+    fclose(fp);
+    return NULL;
+  }
+  char *buff = malloc(sizeof(char) * buff_size + 1);
+  if (buff == NULL) {
+    fclose(fp);
+    return NULL;
+  }
+  if (fseek(fp, 0, SEEK_SET) != 0) {
+    fclose(fp);
+    return NULL;
+  }
+  size_t len = fread(buff, sizeof(char), buff_size, fp);
+  if (ferror(fp)) {
+    printf("Error reading file: %s", file_name);
+    fclose(fp);
+    return NULL;
+  }
+  buff[len + 1] = 0;
+  return buff;
 }
