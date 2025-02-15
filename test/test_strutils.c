@@ -6,6 +6,7 @@
 #include "strutils.h"
 
 #define DIVIDER "========================================\n"
+#define MAX_STRING_LENGTH 50
 
 void test_split_string(void);
 
@@ -18,8 +19,10 @@ void test_split_string(void) {
   printf(DIVIDER);
   printf("Testing split_string...\n");
 
-  char* test_string_ptr = malloc(50 * sizeof(char));
+  char* test_string_ptr = malloc(MAX_STRING_LENGTH * sizeof(char));
   assert(test_string_ptr != NULL);
+  memset(test_string_ptr, 0, MAX_STRING_LENGTH);
+
   char* delim = malloc(5 * sizeof(char));
   assert(delim != NULL);
 
@@ -46,11 +49,35 @@ void test_split_string(void) {
 
   next_string = split_string(test_string, delim);
   assert(strcmp(test_string, "split.") == 0);
+  assert(next_string == NULL);
+
+  // Test for NULL pointer.
+  test_string = next_string;
+  next_string = split_string(test_string, delim);
+  assert(next_string == NULL);
+  assert(test_string == NULL);
+
+  memset(test_string_ptr, 0, MAX_STRING_LENGTH);
+  str_len = strlen("Double -  - delimiter.");
+  strcpy(test_string_ptr, "Double -  - delimiter.");
+  test_string_ptr[str_len] = 0;
+  printf("Splitting '%s' with '%s' as delimiter\n", test_string_ptr, delim);
+
+  test_string = test_string_ptr;
+
+  next_string = split_string(test_string, delim);
+  assert(strcmp(test_string, "Double") == 0);
   test_string = next_string;
 
   next_string = split_string(test_string, delim);
+  assert(strcmp(test_string, "") == 0);
+  test_string = next_string;
+
+  next_string = split_string(test_string, delim);
+  assert(strcmp(test_string, "delimiter.") == 0);
   assert(next_string == NULL);
 
+  memset(test_string_ptr, 0, MAX_STRING_LENGTH);
   strcpy(test_string_ptr, "p");
   test_string_ptr[1] = 0;
   strcpy(delim, "p");
@@ -58,9 +85,12 @@ void test_split_string(void) {
   printf("Splitting '%s' with '%s' as delimiter.\n", test_string_ptr, delim);
 
   next_string = split_string(test_string, delim);
+  assert(strcmp(test_string, "") == 0);
   assert(next_string == NULL);
 
   free(test_string_ptr);
   free(delim);
+  printf(DIVIDER);
+  printf("PASSED\n");
   printf(DIVIDER);
 }

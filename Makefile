@@ -1,5 +1,5 @@
 # Compiler
-CC = gcc
+CC = gcc -std=c99
 
 # Compiler Flags
 LWS2 = -lws2_32
@@ -7,21 +7,32 @@ CFLAGS = -Wall -Iinclude
 
 # Directories
 SRC_DIR = src
+OBJ_DIR = obj
 TEST_DIR = test
 INC_DIR = include
 
 
-webserver: $(SRC_DIR)/webserver.o $(SRC_DIR)/strutils.o
-	$(CC) $(SRC_DIR)/webserver.o $(SRC_DIR)/strutils.o -o webserver $(LWS2) $(CFLAGS)
+webserver: $(OBJ_DIR)/main.o $(OBJ_DIR)/server.o $(OBJ_DIR)/client_handler.o $(OBJ_DIR)/strutils.o
+	$(CC) $(OBJ_DIR)/main.o $(OBJ_DIR)/server.o $(OBJ_DIR)/client_handler.o $(OBJ_DIR)/strutils.o -o webserver $(LWS2) $(CFLAGS)
 
-webserver.o: $(SRC_DIR)/webserver.c
-	$(CC) -c $(SRC_DIR)/webserver.c -o $(SRC_DIR)/webserver.o $(CFLAGS)
+$(OBJ_DIR)/%.o: $(SRC_DIR)/%.c
+	@mkdir -p $(OBJ_DIR)
+	$(CC) -c $< -o $@ $(CFLAGS)
 
-strutils.o: $(SRC_DIR)/strutils.c
-	$(CC) -c $(SRC_DIR)/strutils.c -o $(SRC_DIR)/strutils.o $(CFLAGS)
+main.o: $(SRC_DIR)/main.c $(INC_DIR)/server.h
+	$(CC) -c $(SRC_DIR)/main.c -o $(OBJ_DIR)/main.o $(CFLAGS)
+
+server.o: $(SRC_DIR)/server.c $(INC_DIR)/client_handler.h
+	$(CC) -c $(SRC_DIR)/server.c -o $(OBJ_DIR)/server.o $(CFLAGS)
+
+client_handler.o: $(SRC_DIR)/client_handler.c $(INC_DIR)/client_handler.h $(INC_DIR)/strutils.h
+	$(CC) -c $(SRC_DIR)/client_handler.c -o $(OBJ_DIR)/client_handler.o $(CFLAGS)
+
+strutils.o: $(SRC_DIR)/strutils.c $(INC_DIR)/strutils.h
+	$(CC) -c $(SRC_DIR)/strutils.c -o $(OBJ_DIR)/strutils.o $(CFLAGS)
 
 test_strutils: $(TEST_DIR)/test_strutils.c $(SRC_DIR)/strutils.c $(INC_DIR)/strutils.h
 	$(CC) $(TEST_DIR)/test_strutils.c $(SRC_DIR)/strutils.c -o test_strutils $(CFLAGS)
 
 clean:
-	-rm -f $(SRC_DIR)/*.o $(TEST_DIR)/*.o *.exe
+	-rm -f $(OBJ_DIR)/*.o $(TEST_DIR)/*.o *.exe
