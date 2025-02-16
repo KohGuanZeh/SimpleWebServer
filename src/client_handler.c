@@ -43,6 +43,7 @@ int handle_client(SOCKET client_socket) {
   char buffer[MAX_BUFFER_SIZE + 1];
   unsigned int buffer_size = 0;
   int recv_result = 0;
+  char split = 0;
 
   memset(buffer, 0, MAX_BUFFER_SIZE + 1);
   while (1) {
@@ -70,7 +71,12 @@ int handle_client(SOCKET client_socket) {
     }
 
     char *temp_buffer = buffer;
-    char *next_buffer = split_string(temp_buffer, CRLF);
+    char *next_buffer = split_string(temp_buffer, CRLF, &split);
+    if (!split) {
+      printf("Buffer is too small to receive request...\n");
+      cleanup_request(request);
+      return 1;
+    }
     if (parse_request_line(request, temp_buffer)) {
       printf("Failed to allocate memory for request line components...\n");
       cleanup_request(request);
@@ -84,7 +90,10 @@ int handle_client(SOCKET client_socket) {
     // Loop until a full request has been built and handled.
     while (1) {
       temp_buffer = next_buffer;
-      next_buffer = split_string(temp_buffer, CRLF);
+      next_buffer = split_string(temp_buffer, CRLF, &split);
+      if (!split) {
+        // Receive more from buffer unless recv is 0.
+      }
       if (strcmp(temp_buffer, "") == 0) {
         // End of request headers.
         break;
@@ -150,12 +159,21 @@ void cleanup_request(Request *request) {
  * @return Returns 0 on success, 1 on failure.
  */
 int parse_request_line(Request *request, char *request_line) {
-  char *next_param = split_string(request_line, REQ_LINE_DELIMITER);
+  char split = 0;
+  char *next_param = split_string(request_line, REQ_LINE_DELIMITER, &split);
+  if (!split) {
+    printf("Failed to split for request line...\n");
+    return 1;
+  }
   request->http_method = malloc((strlen(request_line) + 1) * sizeof(char));
   strcpy(request->http_method, request_line);
   request_line = next_param;
 
-  next_param = split_string(request_line, " ");
+  next_param = split_string(request_line, " ", &split);
+  if (!split) {
+    printf("Failed to split for request line...\n");
+    return 1;
+  }
   request->path = malloc((strlen(request_line) + 1) * sizeof(char));
   strcpy(request->path, request_line);
   request->http_version = malloc((strlen(next_param) + 1) * sizeof(char));
@@ -177,7 +195,12 @@ int parse_request_line(Request *request, char *request_line) {
  * @return Returns 0 on success, 1 on failure.
  */
 int parse_request_header(Request *request, char *header) {
-  char *value = split_string(header, HEADER_DELIMITER);
+  char split = 0;
+  char *value = split_string(header, HEADER_DELIMITER, &split);
+  if (!split) {
+    printf("Failed to split for request header...\n");
+    return 1;
+  }
   header = strlwr(header);
   if (strcmp(header, "content-length") != 0) {
     return 0;

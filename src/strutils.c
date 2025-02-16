@@ -9,10 +9,12 @@
  *
  * @param string String to be split based on the delimiter.
  * @param delimiter String to function as a delimiter.
+ * @param split `char *` that stores 1 if it did split, 0 otherwise.
  * @return Returns  `char *` to the next half of the split string if it exists.
  * If not, it will return `NULL`.
  */
-char *split_string(char *string, char *delimiter) {
+char *split_string(char *string, char *delimiter, char *split) {
+  *split = 0;
   if (string == NULL) {
     return NULL;
   }
@@ -21,6 +23,7 @@ char *split_string(char *string, char *delimiter) {
   if (delim_ptr == NULL) {
     return NULL;
   }
+  *split = 1;
   for (size_t i = 0; i < delim_len; i++) {
     *delim_ptr = '\0';
     delim_ptr += 1;

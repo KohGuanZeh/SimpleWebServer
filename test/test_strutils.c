@@ -19,6 +19,7 @@ void test_split_string(void) {
   printf(DIVIDER);
   printf("Testing split_string...\n");
 
+  char split = 0;
   char* test_string_ptr = malloc(MAX_STRING_LENGTH * sizeof(char));
   assert(test_string_ptr != NULL);
   memset(test_string_ptr, 0, MAX_STRING_LENGTH);
@@ -35,25 +36,30 @@ void test_split_string(void) {
 
   char* test_string = test_string_ptr;
 
-  char* next_string = split_string(test_string, delim);
+  char* next_string = split_string(test_string, delim, &split);
+  assert(split == 1);
   assert(strcmp(test_string, "This") == 0);
   test_string = next_string;
 
-  next_string = split_string(test_string, delim);
+  next_string = split_string(test_string, delim, &split);
+  assert(split == 1);
   assert(strcmp(test_string, "string") == 0);
   test_string = next_string;
 
-  next_string = split_string(test_string, delim);
+  next_string = split_string(test_string, delim, &split);
+  assert(split == 1);
   assert(strcmp(test_string, "should") == 0);
   test_string = next_string;
 
-  next_string = split_string(test_string, delim);
+  next_string = split_string(test_string, delim, &split);
+  assert(split == 0);
   assert(strcmp(test_string, "split.") == 0);
   assert(next_string == NULL);
 
   // Test for NULL pointer.
   test_string = next_string;
-  next_string = split_string(test_string, delim);
+  next_string = split_string(test_string, delim, &split);
+  assert(split == 0);
   assert(next_string == NULL);
   assert(test_string == NULL);
 
@@ -65,15 +71,18 @@ void test_split_string(void) {
 
   test_string = test_string_ptr;
 
-  next_string = split_string(test_string, delim);
+  next_string = split_string(test_string, delim, &split);
+  assert(split == 1);
   assert(strcmp(test_string, "Double") == 0);
   test_string = next_string;
 
-  next_string = split_string(test_string, delim);
+  next_string = split_string(test_string, delim, &split);
+  assert(split == 1);
   assert(strcmp(test_string, "") == 0);
   test_string = next_string;
 
-  next_string = split_string(test_string, delim);
+  next_string = split_string(test_string, delim, &split);
+  assert(split == 0);
   assert(strcmp(test_string, "delimiter.") == 0);
   assert(next_string == NULL);
 
@@ -84,9 +93,12 @@ void test_split_string(void) {
   delim[1] = 0;
   printf("Splitting '%s' with '%s' as delimiter.\n", test_string_ptr, delim);
 
-  next_string = split_string(test_string, delim);
+  test_string = test_string_ptr;
+
+  next_string = split_string(test_string, delim, &split);
+  assert(split == 1);
   assert(strcmp(test_string, "") == 0);
-  assert(next_string == NULL);
+  assert(strcmp(next_string, "") == 0);
 
   free(test_string_ptr);
   free(delim);
