@@ -3,7 +3,7 @@
 
 #include <winsock2.h>
 
-#define MAX_BUFFER_SIZE 8192
+#define MAX_BUFFER_SIZE 512
 
 int handle_client(SOCKET);
 

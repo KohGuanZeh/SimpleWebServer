@@ -3,31 +3,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <winsock2.h>
 
+#include "http_parser.h"
 #include "strutils.h"
 
 #define CRLF "\r\n"
-#define REQ_LINE_DELIMITER " "
-#define HEADER_DELIMITER ": "
-
-typedef struct {
-  char *http_method;
-  char *path;
-  char *http_version;
-  size_t content_length;
-  char *body;
-} Request;
 
 typedef struct {
   size_t content_length;
   char *body;
 } ResponseBody;
 
-Request *create_request();
-void cleanup_request(Request *);
-int parse_request_line(Request *, char *);
-int parse_request_header(Request *, char *);
+int fill_buffer(SOCKET, char *, unsigned int *);
 
 int handle_response(SOCKET);
 ResponseBody *read_file(char *);
@@ -45,24 +32,18 @@ int handle_client(SOCKET client_socket) {
   int recv_result = 0;
   char split = 0;
 
-  memset(buffer, 0, MAX_BUFFER_SIZE + 1);
   while (1) {
-    if (buffer_size > MAX_BUFFER_SIZE) {
-      printf("Error. Buffer size exceeds maximum limit.\n");
-    }
-    unsigned int recv_size = MAX_BUFFER_SIZE - buffer_size;
-    int recv_result = recv(client_socket, buffer + buffer_size, recv_size, 0);
-    // No more data received.
+    recv_result = fill_buffer(client_socket, buffer, &buffer_size);
     if (recv_result == 0) {
       printf("Client connection closing...\n");
       break;
     } else if (recv_result < 0) {
       printf("recv failed: %d\n", WSAGetLastError());
       return 1;
+    } else if (recv_result == MAX_BUFFER_SIZE + 1) {
+      printf("Error. Buffer size exceeds maximum limit.\n");
+      return 1;
     }
-    // Set null character.
-    unsigned int total_size = buffer_size + recv_result + 1;
-    buffer[total_size - 1] = 0;
 
     // Request Builder.
     Request *request = create_request();
@@ -78,7 +59,7 @@ int handle_client(SOCKET client_socket) {
       return 1;
     }
     if (parse_request_line(request, temp_buffer)) {
-      printf("Failed to allocate memory for request line components...\n");
+      printf("Failed to parse request line...\n");
       cleanup_request(request);
       return 1;
     }
@@ -92,7 +73,28 @@ int handle_client(SOCKET client_socket) {
       temp_buffer = next_buffer;
       next_buffer = split_string(temp_buffer, CRLF, &split);
       if (!split) {
-        // Receive more from buffer unless recv is 0.
+        buffer_size = strlen(temp_buffer);
+        // If buffer is already full:
+        if (strlen(temp_buffer) >= MAX_BUFFER_SIZE) {
+          printf("Buffer is too small to receive request...\n");
+          cleanup_request(request);
+          return 1;
+        }
+        memcpy(buffer, temp_buffer, buffer_size);
+        recv_result = fill_buffer(client_socket, buffer, &buffer_size);
+        if (recv_result == 0) {
+          printf("Client connection closing...\n");
+        } else if (recv_result < 0) {
+          printf("recv failed: %d\n", WSAGetLastError());
+          cleanup_request(request);
+          return 1;
+        } else if (recv_result == MAX_BUFFER_SIZE + 1) {
+          printf("Error. Buffer size exceeds maximum limit.\n");
+          cleanup_request(request);
+          return 1;
+        }
+        next_buffer = buffer;
+        continue;
       }
       if (strcmp(temp_buffer, "") == 0) {
         // End of request headers.
@@ -117,101 +119,28 @@ int handle_client(SOCKET client_socket) {
 }
 
 /**
- * @brief Creates an empty `Request` struct.
+ * @brief Fills receive buffer with socket data and return receive result.
+ * Buffer size is also updated within this function.
  *
- * @return Returns an empty `Request *` on success, `NULL` on failure.
+ * @param client_socket `SOCKET` of client.
+ * @param buffer `char *` buffer to receive data.
+ * @param buffer_size_ptr `unsigned int *` of current size of buffer.
+ * @return Returns socket receive result.
  */
-Request *create_request() {
-  Request *request = malloc(sizeof(Request));
-  if (request == NULL) {
-    printf("Failed to create request...\n");
-    return NULL;
+int fill_buffer(SOCKET client_socket, char *buffer,
+                unsigned int *buffer_size_ptr) {
+  unsigned int buffer_size = *buffer_size_ptr;
+  if (buffer_size >= MAX_BUFFER_SIZE) {
+    return MAX_BUFFER_SIZE + 1;
   }
-  request->http_method = NULL;
-  request->path = NULL;
-  request->http_version = NULL;
-  request->content_length = 0;
-  request->body = NULL;
-  return request;
-}
-
-/**
- * @brief Cleanup `Request` struct.
- *
- * @param request `Request` struct to be cleaned.
- */
-void cleanup_request(Request *request) {
-  if (request == NULL) {
-    return;
+  char *buffer_start = buffer + buffer_size;
+  memset(buffer_start, '\0', MAX_BUFFER_SIZE - buffer_size);
+  unsigned int recv_size = MAX_BUFFER_SIZE - buffer_size;
+  int recv_result = recv(client_socket, buffer + buffer_size, recv_size, 0);
+  if (recv_result > 0) {
+    *buffer_size_ptr = buffer_size + recv_result;
   }
-  free(request->http_method);
-  free(request->http_version);
-  free(request->path);
-  free(request->body);
-  free(request);
-}
-
-/**
- * @brief Parses request line to `Request` struct.
- *
- * @param request `Request *` struct to store request line information.
- * @param request_line `char *` request line buffer.
- * @return Returns 0 on success, 1 on failure.
- */
-int parse_request_line(Request *request, char *request_line) {
-  char split = 0;
-  char *next_param = split_string(request_line, REQ_LINE_DELIMITER, &split);
-  if (!split) {
-    printf("Failed to split for request line...\n");
-    return 1;
-  }
-  request->http_method = malloc((strlen(request_line) + 1) * sizeof(char));
-  strcpy(request->http_method, request_line);
-  request_line = next_param;
-
-  next_param = split_string(request_line, " ", &split);
-  if (!split) {
-    printf("Failed to split for request line...\n");
-    return 1;
-  }
-  request->path = malloc((strlen(request_line) + 1) * sizeof(char));
-  strcpy(request->path, request_line);
-  request->http_version = malloc((strlen(next_param) + 1) * sizeof(char));
-  strcpy(request->http_version, next_param);
-
-  if (request->http_method == NULL || request->http_version == NULL ||
-      request->path == NULL) {
-    return 1;
-  }
-  return 0;
-}
-
-/**
- * @brief Parses reuqest header to `Request` struct.
- * Only content-length is read as of now to handle request body if any.
- *
- * @param request `Request *` struct to store request header information.
- * @param header `char *` request header buffer.
- * @return Returns 0 on success, 1 on failure.
- */
-int parse_request_header(Request *request, char *header) {
-  char split = 0;
-  char *value = split_string(header, HEADER_DELIMITER, &split);
-  if (!split) {
-    printf("Failed to split for request header...\n");
-    return 1;
-  }
-  header = strlwr(header);
-  if (strcmp(header, "content-length") != 0) {
-    return 0;
-  }
-
-  char *end_ptr;
-  request->content_length = strtoull(value, &end_ptr, 10);
-  if (end_ptr != 0) {
-    return 1;
-  }
-  return 0;
+  return recv_result;
 }
 
 /**
