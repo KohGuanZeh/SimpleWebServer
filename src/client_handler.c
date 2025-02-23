@@ -82,19 +82,17 @@ int handle_client(SOCKET client_socket) {
         }
         memcpy(buffer, temp_buffer, buffer_size);
         recv_result = fill_buffer(client_socket, buffer, &buffer_size);
-        if (recv_result == 0) {
-          printf("Client connection closing...\n");
-        } else if (recv_result < 0) {
+        if (recv_result >= 0 && recv_result <= MAX_BUFFER_SIZE) {
+          next_buffer = buffer;
+          continue;
+        }
+        if (recv_result < 0) {
           printf("recv failed: %d\n", WSAGetLastError());
-          cleanup_request(request);
-          return 1;
         } else if (recv_result == MAX_BUFFER_SIZE + 1) {
           printf("Error. Buffer size exceeds maximum limit.\n");
-          cleanup_request(request);
-          return 1;
         }
-        next_buffer = buffer;
-        continue;
+        cleanup_request(request);
+        return 1;
       }
       if (strcmp(temp_buffer, "") == 0) {
         // End of request headers.
@@ -113,6 +111,8 @@ int handle_client(SOCKET client_socket) {
       printf("Failed to respond.\n");
       return 1;
     }
+
+    cleanup_request(request);
   }
 
   return 0;
