@@ -1,0 +1,1 @@
+char *get_root_directory();
