@@ -9,16 +9,7 @@
 
 #define CRLF "\r\n"
 
-typedef struct {
-  size_t content_length;
-  char *body;
-} ResponseBody;
-
 int fill_buffer(SOCKET, char *, unsigned int *);
-
-int handle_response(SOCKET);
-ResponseBody *read_file(char *);
-void cleanup_response(ResponseBody *);
 
 /**
  * @brief Handles client socket.
@@ -107,12 +98,21 @@ int handle_client(SOCKET client_socket) {
 
     printf("Content-Length: %Iu\n\n", request->content_length);
 
-    if (handle_response(client_socket)) {
-      printf("Failed to respond.\n");
+    Response *response = get_response(request);
+    cleanup_request(request);
+
+    size_t send_size = 0;
+    char *send_buffer = build_response_buffer(response, &send_size);
+    cleanup_response(response);
+
+    int send_result = send(client_socket, send_buffer, send_size, 0);
+    cleanup_response_buffer(send_buffer);
+
+    if (send_result == SOCKET_ERROR) {
+      printf("send failed: %d\n", WSAGetLastError());
       return 1;
     }
-
-    cleanup_request(request);
+    printf("Bytes sent: %d\n\n", send_result);
   }
 
   return 0;
@@ -141,76 +141,4 @@ int fill_buffer(SOCKET client_socket, char *buffer,
     *buffer_size_ptr = buffer_size + recv_result;
   }
   return recv_result;
-}
-
-/**
- * @brief Handle creation and sending of response.
- *
- * @param client_socket `SOCKET *` for the client socket.
- * @return Returns 0 on success, 1 on failure.
- */
-int handle_response(SOCKET client_socket) {
-  char *response_buffer = "HTTP/1.0 200 OK\r\nContent-Length: 5\r\n\r\nHello";
-  // int response_size = 0;
-
-  int send_result =
-      send(client_socket, response_buffer, strlen(response_buffer) + 1, 0);
-  if (send_result == SOCKET_ERROR) {
-    printf("send failed: %d\n", WSAGetLastError());
-    return 1;
-  }
-  printf("Bytes sent: %d\n\n", send_result);
-  return 0;
-}
-
-ResponseBody *read_file(char *file_name) {
-  ResponseBody *res_body = malloc(sizeof(ResponseBody));
-  if (res_body == NULL) {
-    return NULL;
-  }
-
-  FILE *fp = fopen(file_name, "r");
-  if (fp == NULL) {
-    return NULL;
-  }
-
-  if (fseek(fp, 0, SEEK_END) != 0) {
-    // Error encountered on fseek
-    fclose(fp);
-    return NULL;
-  }
-  long buff_size = ftell(fp);
-  if (buff_size == -1) {
-    fclose(fp);
-    return NULL;
-  }
-
-  res_body->body = malloc(sizeof(char) * buff_size + 1);
-
-  if (res_body->body == NULL) {
-    fclose(fp);
-    return NULL;
-  }
-
-  if (fseek(fp, 0, SEEK_SET) != 0) {
-    // Error encountered on fseek
-    fclose(fp);
-    return NULL;
-  }
-
-  size_t len = fread(res_body->body, sizeof(char), buff_size, fp);
-  if (ferror(fp)) {
-    printf("Error reading file: %s", file_name);
-    fclose(fp);
-    return NULL;
-  }
-
-  res_body->body[len++] = 0;
-  res_body->content_length = len;
-  return res_body;
-}
-
-void cleanup_response(ResponseBody *body) {
-  free(body->body);
-  free(body);
 }

@@ -106,3 +106,46 @@ int parse_request_header(Request *request, char *header) {
   }
   return 0;
 }
+
+/**
+ * @brief Builds a response object given the request.
+ *
+ * @param request `Request *` struct that stores request information.
+ * @return Returns a Response object for the request.
+ */
+Response *get_response(Request *request) {
+  Response *response = malloc(sizeof(Response));
+  if (response == NULL) {
+    return NULL;
+  }
+  return response;
+}
+
+/**
+ * @brief Cleanup the `Response` struct.
+ *
+ * @param response `Response *` struct to be cleaned.
+ */
+void cleanup_response(Response *response) {
+  if (response == NULL) {
+    return;
+  }
+  free(response->http_version);
+  free(response->status);
+  free(response->content_type);
+  free(response->body);
+  free(response);
+}
+
+char *build_response_buffer(Response *response, size_t *size) {
+  if (response == NULL) {
+    return NULL;
+  }
+}
+
+/**
+ * @brief Cleanup the response buffer.
+ *
+ * @param response_buffer `char *` buffer to be cleaned.
+ */
+void cleanup_response_buffer(char *response_buffer) { free(response_buffer); }
