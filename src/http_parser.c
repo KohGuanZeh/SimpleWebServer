@@ -8,6 +8,8 @@
 #define REQ_LINE_DELIMITER " "
 #define HEADER_DELIMITER ": "
 
+Response *create_empty_response();
+
 /**
  * @brief Creates an empty `Request` struct.
  *
@@ -57,7 +59,10 @@ int parse_request_line(Request *request, char *request_line) {
     printf("Failed to split for request line...\n");
     return 1;
   }
-  request->http_method = malloc((strlen(request_line) + 1) * sizeof(char));
+  request->http_method = calloc(strlen(request_line) + 1, sizeof(char));
+  if (request->http_method == NULL) {
+    return 1;
+  }
   strcpy(request->http_method, request_line);
   request_line = next_param;
 
@@ -66,15 +71,14 @@ int parse_request_line(Request *request, char *request_line) {
     printf("Failed to split for request line...\n");
     return 1;
   }
-  request->path = malloc((strlen(request_line) + 1) * sizeof(char));
-  strcpy(request->path, request_line);
-  request->http_version = malloc((strlen(next_param) + 1) * sizeof(char));
-  strcpy(request->http_version, next_param);
-
-  if (request->http_method == NULL || request->http_version == NULL ||
-      request->path == NULL) {
+  request->path = calloc(strlen(request_line) + 1, sizeof(char));
+  request->http_version = calloc(strlen(next_param) + 1, sizeof(char));
+  if (request->http_version == NULL || request->path == NULL) {
     return 1;
   }
+  strcpy(request->path, request_line);
+  strcpy(request->http_version, next_param);
+
   return 0;
 }
 
@@ -108,16 +112,37 @@ int parse_request_header(Request *request, char *header) {
 }
 
 /**
+ * @brief Creates an empty `Response` struct.
+ *
+ * @return Returns an empty `Response *` on success, `NULL` on failure.
+ */
+Response *create_empty_response() {
+  Response *response = malloc(sizeof(Response));
+  if (response == NULL) {
+    return NULL;
+  }
+  response->http_version = NULL;
+  response->status = NULL;
+  response->content_length = 0;
+  response->content_type = NULL;
+  response->body = NULL;
+  return response;
+}
+
+/**
  * @brief Builds a response object given the request.
  *
  * @param request `Request *` struct that stores request information.
  * @return Returns a Response object for the request.
  */
-Response *get_response(Request *request) {
-  Response *response = malloc(sizeof(Response));
-  if (response == NULL) {
-    return NULL;
+Response *handle_request(Request *request) {
+  Response *response = create_empty_response();
+  response->http_version = calloc(9, sizeof(char));
+  if (response->http_version == NULL) {
+    return 1;
   }
+  strcpy("HTTP/1.0", response->http_version);
+  response->http_version[8] = '\0';
   return response;
 }
 
@@ -149,3 +174,17 @@ char *build_response_buffer(Response *response, size_t *size) {
  * @param response_buffer `char *` buffer to be cleaned.
  */
 void cleanup_response_buffer(char *response_buffer) { free(response_buffer); }
+
+/**
+ * @brief Return buffer for internal server error.
+ *
+ * @param size `size_t *` to store size of return buffer.
+ * @return Returns the buffer containing the server error response.
+ */
+char *internal_server_error(size_t *size) {
+  char *buff =
+      "HTTP/1.0 500 Internal Server Error\r\nContent-Type: "
+      "text/html\r\nConnection: close\r\n\r\n";
+  *size = strlen(buff) + 1;
+  return buff;
+}

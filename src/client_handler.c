@@ -98,15 +98,24 @@ int handle_client(SOCKET client_socket) {
 
     printf("Content-Length: %Iu\n\n", request->content_length);
 
-    Response *response = get_response(request);
+    Response *response = handle_request(request);
     cleanup_request(request);
 
     size_t send_size = 0;
+    boolean clean_buffer = TRUE;
     char *send_buffer = build_response_buffer(response, &send_size);
     cleanup_response(response);
 
+    if (send_buffer == NULL) {
+      send_buffer = internal_server_error(&send_size);
+      clean_buffer = FALSE;
+    }
+
     int send_result = send(client_socket, send_buffer, send_size, 0);
-    cleanup_response_buffer(send_buffer);
+
+    if (clean_buffer) {
+      cleanup_response_buffer(send_buffer);
+    }
 
     if (send_result == SOCKET_ERROR) {
       printf("send failed: %d\n", WSAGetLastError());

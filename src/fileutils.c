@@ -62,3 +62,12 @@ char *get_root_directory() {
   root_dir[new_dir_len] = '\0';
   return root_dir;
 }
+
+/**
+ * @brief Returns the mime type of the file.
+ * If the file is without extension, it defaults to text/txt.
+ *
+ * @param file `char *` that is the path of the file with extension.
+ * @return Returns the mime type of the file.
+ */
+char *get_mime_type(char *file) { return "text/txt"; }
