@@ -41,3 +41,61 @@ void replace_backslash(char *string) {
     }
   }
 }
+
+/**
+ * @brief Converts a hex character to its corresponding int value.
+ * Returns -1 if it is not valid.
+ *
+ * @param hex_char `char` hex character to be converted to integer.
+ * @return Returns value of hex character, -1 if invalid hex character.
+ */
+int hex_to_int(char hex_char) {
+  if (hex_char >= '0' && hex_char <= '9') {
+    return hex_char - '0';
+  }
+  if (hex_char >= 'A' && hex_char <= 'F') {
+    return hex_char - 'A' + 10;
+  }
+  if (hex_char >= 'a' && hex_char <= 'f') {
+    return hex_char - 'a' + 10;
+  }
+  return -1;
+}
+
+/**
+ * @brief Decodes the URL string in place.
+ *
+ * @param string `char *` URL string to decode.
+ * @return Returns 0 if the string is parsed successfully, 1 if it is a bad
+ * string.
+ */
+unsigned char url_decode(char *string) {
+  char *seek_ptr = string;
+
+  while (*seek_ptr != '\0') {
+    if (*seek_ptr == '%') {
+      seek_ptr++;
+      int first_hex = hex_to_int(*seek_ptr);
+      seek_ptr++;
+      int second_hex = hex_to_int(*seek_ptr);
+      if (first_hex < 0 || second_hex < 0) {
+        return 1;
+      }
+      *string = first_hex << 4 + second_hex;
+      if (*string == '\0') {
+        return 1;
+      }
+    } else if (*seek_ptr == '+') {
+      *string = ' ';
+    } else {
+      *string = *seek_ptr;
+    }
+    seek_ptr++;
+    string++;
+  }
+  while (string < seek_ptr) {
+    string = '\0';
+    string++;
+  }
+  return 1;
+}
