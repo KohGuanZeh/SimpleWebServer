@@ -8,6 +8,9 @@
 #define REQ_LINE_DELIMITER " "
 #define HEADER_DELIMITER ": "
 
+#define HTTP_VERSION "HTTP/1.0"
+#define STATUS_400 "400 Bad Request"
+
 Response *create_empty_response();
 
 /**
@@ -59,11 +62,10 @@ int parse_request_line(Request *request, char *request_line) {
     printf("Failed to split for request line...\n");
     return 1;
   }
-  request->http_method = calloc(strlen(request_line) + 1, sizeof(char));
+  strcpy_newbuf(request->http_method, request_line);
   if (request->http_method == NULL) {
     return 1;
   }
-  strcpy(request->http_method, request_line);
   request_line = next_param;
 
   next_param = split_string(request_line, " ", &split);
@@ -71,14 +73,11 @@ int parse_request_line(Request *request, char *request_line) {
     printf("Failed to split for request line...\n");
     return 1;
   }
-  request->path = calloc(strlen(request_line) + 1, sizeof(char));
-  request->http_version = calloc(strlen(next_param) + 1, sizeof(char));
+  strcpy_newbuf(request->path, request_line);
+  strcpy_newbuf(request->http_version, next_param);
   if (request->http_version == NULL || request->path == NULL) {
     return 1;
   }
-  strcpy(request->path, request_line);
-  strcpy(request->http_version, next_param);
-
   return 0;
 }
 
@@ -137,12 +136,18 @@ Response *create_empty_response() {
  */
 Response *handle_request(Request *request) {
   Response *response = create_empty_response();
-  response->http_version = calloc(9, sizeof(char));
+  strcpy_newbuf(response->http_version, HTTP_VERSION);
   if (response->http_version == NULL) {
     return 1;
   }
-  strcpy("HTTP/1.0", response->http_version);
-  response->http_version[8] = '\0';
+  if (url_decode(request->path)) {
+    // If bad string, send bad request error.
+    strcpy_newbuf(response->status, STATUS_400);
+    if (response->status == NULL) {
+      return 1;
+    }
+    return response;
+  }
   return response;
 }
 
