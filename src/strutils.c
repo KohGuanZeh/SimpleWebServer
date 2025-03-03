@@ -35,17 +35,6 @@ char *split_string(char *string, char *delimiter, char *split) {
 }
 
 /**
- * @brief Replaces backslash in strings with forward slash.
- */
-void replace_backslash(char *string) {
-  for (int i = 0; string[i] != '\0'; i++) {
-    if (string[i] == '\\') {
-      string[i] = '/';
-    }
-  }
-}
-
-/**
  * @brief Converts a hex character to its corresponding int value.
  * Returns -1 if it is not valid.
  *

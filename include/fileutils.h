@@ -1,7 +1,7 @@
 #ifndef FILEUTILS
 #define FILEUTILS
 
-char *get_root_directory();
+char *resolve_filepath(char *);
 char *get_mime_type(char *);
 
 #endif

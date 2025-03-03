@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "fileutils.h"
 #include "strutils.h"
 
 #define REQ_LINE_DELIMITER " "
@@ -10,6 +11,7 @@
 
 #define HTTP_VERSION "HTTP/1.0"
 #define STATUS_400 "400 Bad Request"
+#define STATUS_403 "403 Forbidden"
 
 Response *create_empty_response();
 
@@ -138,15 +140,18 @@ Response *handle_request(Request *request) {
   Response *response = create_empty_response();
   strcpy_newbuf(response->http_version, HTTP_VERSION);
   if (response->http_version == NULL) {
-    return 1;
+    return NULL;
   }
   if (url_decode(request->path)) {
     // If bad string, send bad request error.
     strcpy_newbuf(response->status, STATUS_400);
     if (response->status == NULL) {
-      return 1;
+      return NULL;
     }
     return response;
+  }
+  char *filepath = resolve_filepath(request->path);
+  if (filepath == NULL) {
   }
   return response;
 }
