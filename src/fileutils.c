@@ -63,4 +63,4 @@ char *resolve_filepath(char *rel_path) {
  * @param file `char *` that is the path of the file with extension.
  * @return Returns the mime type of the file.
  */
-char *get_mime_type(char *file) { return "text/txt"; }
+char *get_mime_type(char *file) { return DEFAULT_MIME_TYPE; }

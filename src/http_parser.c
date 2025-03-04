@@ -6,14 +6,19 @@
 #include "fileutils.h"
 #include "strutils.h"
 
+#define RESPONSE_TEMPLATE_LEN 4096
+#define CONTENT_LENGTH_LEN 20
 #define REQ_LINE_DELIMITER " "
 #define HEADER_DELIMITER ": "
 
 #define HTTP_VERSION "HTTP/1.0"
+#define STATUS_500 "500 Internal Server Error"
 #define STATUS_400 "400 Bad Request"
 #define STATUS_403 "403 Forbidden"
 
-Response *create_empty_response();
+Response create_empty_response();
+Response create_status_400_response(char *);
+Response create_status_500_response(char *);
 
 /**
  * @brief Creates an empty `Request` struct.
@@ -115,18 +120,46 @@ int parse_request_header(Request *request, char *header) {
 /**
  * @brief Creates an empty `Response` struct.
  *
- * @return Returns an empty `Response *` on success, `NULL` on failure.
+ * @return Returns an empty `Response`.
  */
-Response *create_empty_response() {
-  Response *response = malloc(sizeof(Response));
-  if (response == NULL) {
-    return NULL;
-  }
-  response->http_version = NULL;
-  response->status = NULL;
-  response->content_length = 0;
-  response->content_type = NULL;
-  response->body = NULL;
+Response create_empty_response() {
+  Response response = {.status = NULL,
+                       .content_length = 0,
+                       .content_type = NULL,
+                       .body = NULL,
+                       .malloc_body = 0};
+  return response;
+}
+
+/**
+ * @brief Creates a status 400 `Response` struct.
+ *
+ * @param msg `char *` String based error message to return as response.
+ * `NULL` if no error message is to be transmitted.
+ * @return Returns an empty `Response`.
+ */
+Response create_status_400_response(char *msg) {
+  Response response = {.status = NULL,
+                       .content_length = msg != NULL ? strlen(msg) : 0,
+                       .content_type = NULL,
+                       .body = msg,
+                       .malloc_body = 0};
+  return response;
+}
+
+/**
+ * @brief Creates a status 500 `Response` struct.
+ *
+ * @param msg `char *` String based error message to return as response.
+ * `NULL` if no error message is to be transmitted.
+ * @return Returns a status 500 `Response` with error message.
+ */
+Response create_status_500_response(char *msg) {
+  Response response = {.status = NULL,
+                       .content_length = msg != NULL ? strlen(msg) : 0,
+                       .content_type = NULL,
+                       .body = msg,
+                       .malloc_body = 0};
   return response;
 }
 
@@ -136,28 +169,22 @@ Response *create_empty_response() {
  * @param request `Request *` struct that stores request information.
  * @return Returns a Response object for the request.
  */
-Response *handle_request(Request *request) {
-  Response *response = create_empty_response();
-  strcpy_newbuf(response->http_version, HTTP_VERSION);
-  if (response->http_version == NULL) {
-    return NULL;
-  }
+Response handle_request(Request *request) {
   if (url_decode(request->path)) {
     // If bad string, send bad request error.
-    strcpy_newbuf(response->status, STATUS_400);
-    if (response->status == NULL) {
-      return NULL;
-    }
-    return response;
+    return create_status_400_response("URL decode error. Bad request.");
   }
   char *filepath = resolve_filepath(request->path);
   if (filepath == NULL) {
+    return create_status_500_response("Unable to resolve filepath.");
   }
+  Response response = create_empty_response();
   return response;
 }
 
 /**
  * @brief Cleanup the `Response` struct.
+ * Frees dynamically allocated memory for the response body.
  *
  * @param response `Response *` struct to be cleaned.
  */
@@ -165,17 +192,18 @@ void cleanup_response(Response *response) {
   if (response == NULL) {
     return;
   }
-  free(response->http_version);
-  free(response->status);
-  free(response->content_type);
-  free(response->body);
-  free(response);
+  if (response->malloc_body) {
+    // Free body if it is dynamically allocated.
+    free(response->body);
+  }
 }
 
 char *build_response_buffer(Response *response, size_t *size) {
+  Response response_value;
   if (response == NULL) {
-    return NULL;
+    response_value = create_status_500_response(NULL);
   }
+  response_value = *response;
 }
 
 /**
@@ -184,17 +212,3 @@ char *build_response_buffer(Response *response, size_t *size) {
  * @param response_buffer `char *` buffer to be cleaned.
  */
 void cleanup_response_buffer(char *response_buffer) { free(response_buffer); }
-
-/**
- * @brief Return buffer for internal server error.
- *
- * @param size `size_t *` to store size of return buffer.
- * @return Returns the buffer containing the server error response.
- */
-char *internal_server_error(size_t *size) {
-  char *buff =
-      "HTTP/1.0 500 Internal Server Error\r\nContent-Type: "
-      "text/html\r\nConnection: close\r\n\r\n";
-  *size = strlen(buff) + 1;
-  return buff;
-}
