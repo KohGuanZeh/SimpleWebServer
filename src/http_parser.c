@@ -17,8 +17,7 @@
 #define STATUS_403 "403 Forbidden"
 
 Response create_empty_response();
-Response create_status_400_response(char *);
-Response create_status_500_response(char *);
+Response create_error_response(char *, char *, unsigned char);
 
 /**
  * @brief Creates an empty `Request` struct.
@@ -132,34 +131,21 @@ Response create_empty_response() {
 }
 
 /**
- * @brief Creates a status 400 `Response` struct.
+ * @brief Creates an error-based `Response` struct.
  *
- * @param msg `char *` String based error message to return as response.
+ * @param status Status line of response.
+ * @param msg String error message to return as response.
  * `NULL` if no error message is to be transmitted.
- * @return Returns an empty `Response`.
+ * @param malloc_body `1` if the `msg` is dynamically allocated. `0` otherwise.
+ * @return Returns an error-based `Response`.
  */
-Response create_status_400_response(char *msg) {
-  Response response = {.status = NULL,
-                       .content_length = msg != NULL ? strlen(msg) : 0,
-                       .content_type = NULL,
+Response create_error_response(char *status, char *msg,
+                               unsigned char malloc_body) {
+  Response response = {.status = status,
+                       .content_length = msg == NULL ? 0 : strlen(msg),
+                       .content_type = DEFAULT_MIME_TYPE,
                        .body = msg,
-                       .malloc_body = 0};
-  return response;
-}
-
-/**
- * @brief Creates a status 500 `Response` struct.
- *
- * @param msg `char *` String based error message to return as response.
- * `NULL` if no error message is to be transmitted.
- * @return Returns a status 500 `Response` with error message.
- */
-Response create_status_500_response(char *msg) {
-  Response response = {.status = NULL,
-                       .content_length = msg != NULL ? strlen(msg) : 0,
-                       .content_type = NULL,
-                       .body = msg,
-                       .malloc_body = 0};
+                       .malloc_body = malloc_body};
   return response;
 }
 
@@ -171,13 +157,28 @@ Response create_status_500_response(char *msg) {
  */
 Response handle_request(Request *request) {
   if (url_decode(request->path)) {
-    // If bad string, send bad request error.
-    return create_status_400_response("URL decode error. Bad request.");
+    // If bad string, return bad request.
+    return create_error_response(STATUS_400, "Bad Request: URL decode error.",
+                                 0);
   }
   char *filepath = resolve_filepath(request->path);
   if (filepath == NULL) {
-    return create_status_500_response("Unable to resolve filepath.");
+    // If unable to resolve filepath, return internal server error.
+    return create_error_response(
+        STATUS_500, "Internal Server Error: Unable to resolve filepath.", 0);
   }
+
+  static char *root_directory;
+  static size_t root_dir_len = 0;
+  if (root_dir_len == 0) {
+    root_directory = get_root_directory();
+    root_dir_len = strlen(root_directory);
+  }
+  if (strncmp(filepath, root_directory, root_dir_len) != 0) {
+    // If resolved file path is outside of root directory, return forbidden.
+    return create_error_response(STATUS_403, "Forbidden Access.", 0);
+  }
+
   Response response = create_empty_response();
   return response;
 }
@@ -201,7 +202,8 @@ void cleanup_response(Response *response) {
 char *build_response_buffer(Response *response, size_t *size) {
   Response response_value;
   if (response == NULL) {
-    response_value = create_status_500_response(NULL);
+    response_value =
+        create_error_response(STATUS_500, "Internal Server Error.", 0);
   }
   response_value = *response;
 }

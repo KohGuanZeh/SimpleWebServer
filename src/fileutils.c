@@ -43,8 +43,12 @@ char *get_root_directory() {
  * @return Returns the normalized absolute path on success, NULL on error.
  */
 char *resolve_filepath(char *rel_path) {
-  char *root_directory = get_root_directory();
-  size_t root_dir_len = strlen(root_directory);
+  static char *root_directory;
+  static size_t root_dir_len = 0;
+  if (root_dir_len == 0) {
+    root_directory = get_root_directory();
+    size_t root_dir_len = strlen(root_directory);
+  }
   size_t rel_path_len = strlen(rel_path);
   char full_path[root_dir_len + rel_path_len + 1];
   strncpy(full_path, root_directory, root_dir_len);
