@@ -28,10 +28,10 @@ server.o: $(SRC_DIR)/server.c $(INC_DIR)/client_handler.h
 client_handler.o: $(SRC_DIR)/client_handler.c $(INC_DIR)/client_handler.h $(INC_DIR)/http_parser.h $(INC_DIR)/strutils.h
 	$(CC) -c $(SRC_DIR)/client_handler.c -o $(OBJ_DIR)/client_handler.o $(CFLAGS)
 
-http_parser.o: $(SRC_DIR)/http_parser.c $(INC_DIR)/http_parser.h $(INC_DIR)/strutils.h
+http_parser.o: $(SRC_DIR)/http_parser.c $(INC_DIR)/http_types.h $(INC_DIR)/http_parser.h $(INC_DIR)/strutils.h
 	$(CC) -c $(SRC_DIR)/http_parser.c -o $(OBJ_DIR)/http_parser.o $(CFLAGS)
 
-fileutils.o: $(SRC_DIR)/fileutils.c $(INC_DIR)/fileutils.h $(INC_DIR)/strutils.h
+fileutils.o: $(SRC_DIR)/fileutils.c $(INC_DIR)/http_types.h $(INC_DIR)/fileutils.h $(INC_DIR)/strutils.h
 	$(CC) -c $(SRC_DIR)/fileutils.c -o $(OBJ_DIR)/fileutils.o $(CFLAGS)
 
 strutils.o: $(SRC_DIR)/strutils.c $(INC_DIR)/strutils.h

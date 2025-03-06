@@ -9,6 +9,7 @@
 #define MAX_PATH_LEN 2048
 
 const char *ROOT_FOLDER = "root";
+const char *INDEX_FILE = "index.html";
 
 /**
  * @brief Returns the root directory of where webserver files are served.
@@ -36,6 +37,22 @@ char *get_root_directory() {
 }
 
 /**
+ * @brief Returns the full path to the index file.
+ *
+ * @return Returns the full path to index.html.
+ */
+char *index_filepath() {
+  static char *index_filepath[MAX_PATH_LEN + 1] = {'\0'};
+  if (index_filepath[0] == NULL) {
+    char *root_directory = get_root_directory();
+    size_t root_dir_len = strlen(root_directory);
+    strncpy(index_filepath, root_directory, root_dir_len);
+    strcat(index_filepath, INDEX_FILE);
+  }
+  return index_filepath;
+}
+
+/**
  * @brief Normalizes the filepath to be an absolute path.
  * Function does not perform any memory allocation.
  *
@@ -52,7 +69,7 @@ char *resolve_filepath(char *rel_path) {
   size_t rel_path_len = strlen(rel_path);
   char full_path[root_dir_len + rel_path_len + 1];
   strncpy(full_path, root_directory, root_dir_len);
-  strncpy(full_path + root_dir_len, rel_path, rel_path_len);
+  strcat(full_path, rel_path);
   full_path[root_dir_len + rel_path_len] = '\0';
   if (!_fullpath(full_path, full_path, strlen(full_path))) {
     return NULL;
@@ -68,3 +85,5 @@ char *resolve_filepath(char *rel_path) {
  * @return Returns the mime type of the file.
  */
 char *get_mime_type(char *file) { return DEFAULT_MIME_TYPE; }
+
+unsigned char generate_response_body(Response *response) { return 1; }
