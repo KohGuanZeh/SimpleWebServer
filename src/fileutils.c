@@ -86,4 +86,50 @@ char *resolve_filepath(char *rel_path) {
  */
 char *get_mime_type(char *file) { return DEFAULT_MIME_TYPE; }
 
-unsigned char generate_response_body(Response *response) { return 1; }
+/**
+ * @brief Add response body based on given request path.
+ *
+ * @param req_path Path of file that is requested.
+ * @param response `Response *` that stores response information.
+ * @return Returns 0 on success, 1 on error.
+ */
+unsigned char generate_response_body(char *req_path, Response *response) {
+  if (req_path == NULL || response == NULL) {
+    return 1;
+  }
+
+  char *filepath = req_path;
+  if (strcmp(req_path, get_root_directory()) == 0) {
+    filepath = index_filepath();
+  }
+
+  FILE *fp = fopen(filepath, "r");
+  if (fp == NULL) {
+    return 1;
+  }
+
+  if (fseek(fp, 0, SEEK_END) != 0) {
+    fclose(fp);
+    return 1;
+  }
+  long buff_size = ftell(fp);
+  if (buff_size == -1) {
+    fclose(fp);
+    return 1;
+  }
+  rewind(fp);
+
+  response->body = malloc(sizeof(char) * buff_size);
+  if (response->body == NULL) {
+    fclose(fp);
+    return 1;
+  }
+  response->malloc_body = 1;
+
+  size_t len = fread(response->body, sizeof(char), buff_size, fp);
+  if (ferror(fp)) {
+    printf("Error reading file: %s", filepath);
+    fclose(fp);
+    return 1;
+  }
+}
