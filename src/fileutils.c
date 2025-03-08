@@ -79,12 +79,45 @@ char *resolve_filepath(char *rel_path) {
 
 /**
  * @brief Returns the mime type of the file.
- * If the file is without extension, it defaults to text/txt.
+ * If the file is without extension, it defaults to text/plain.
  *
- * @param file `char *` that is the path of the file with extension.
+ * @param filepath filepath with extension.
  * @return Returns the mime type of the file.
  */
-char *get_mime_type(char *file) { return DEFAULT_MIME_TYPE; }
+char *get_mime_type(char *filepath) {
+  char *last_backslash = strchr(filepath, '\\');
+  char *extension = strrchr(filepath, '.');
+  if (!extension || last_backslash > extension) {
+    // If extension is NULL or backslash is after extension.
+    printf("No extension found");
+    return DEFAULT_MIME_TYPE;
+  }
+  if (strcmp(extension, ".html") == 0) {
+    return "text/html";
+  }
+  if (strcmp(extension, ".css") == 0) {
+    return "text/css";
+  }
+  if (strcmp(extension, ".js") == 0) {
+    return "application/javascript";
+  }
+  if (strcmp(extension, ".json") == 0) {
+    return "application/json";
+  }
+  if (strcmp(extension, ".jpg") == 0 || strcmp(extension, ".jpeg") == 0) {
+    return "image/jpeg";
+  }
+  if (strcmp(extension, ".png") == 0) {
+    return "image/png";
+  }
+  if (strcmp(extension, ".gif") == 0) {
+    return "image/gif";
+  }
+  if (strcmp(extension, ".pdf") == 0) {
+    return "application/pdf";
+  }
+  return DEFAULT_MIME_TYPE;
+}
 
 /**
  * @brief Add response body based on given request path.
@@ -132,4 +165,9 @@ unsigned char generate_response_body(char *req_path, Response *response) {
     fclose(fp);
     return 1;
   }
+  fclose(fp);
+
+  response->content_length = len;
+  response->content_type = get_mime_type(filepath);
+  return 0;
 }

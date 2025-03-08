@@ -180,6 +180,11 @@ Response handle_request(Request *request) {
   }
 
   Response response = create_empty_response();
+  if (generate_response_body(filepath, &response)) {
+    cleanup_response(&response);
+    return create_error_response(STATUS_500,
+                                 "Failed to generate response body.", 0);
+  }
   return response;
 }
 
