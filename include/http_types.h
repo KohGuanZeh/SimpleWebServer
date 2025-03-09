@@ -15,7 +15,6 @@ typedef struct {
   char *status;
   size_t content_length;
   char *content_type;
-  unsigned char malloc_body;
   char *body;
 } Response;
 

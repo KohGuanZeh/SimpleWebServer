@@ -16,8 +16,8 @@
 #define STATUS_400 "400 Bad Request"
 #define STATUS_403 "403 Forbidden"
 
-Response create_empty_response();
-Response create_error_response(char *, char *, unsigned char);
+Response *create_empty_response();
+Response *create_error_response(char *, char *);
 
 /**
  * @brief Creates an empty `Request` struct.
@@ -121,12 +121,15 @@ int parse_request_header(Request *request, char *header) {
  *
  * @return Returns an empty `Response`.
  */
-Response create_empty_response() {
-  Response response = {.status = NULL,
-                       .content_length = 0,
-                       .content_type = NULL,
-                       .body = NULL,
-                       .malloc_body = 0};
+Response *create_empty_response() {
+  Response *response = malloc(sizeof(Response));
+  if (!response) {
+    return NULL;
+  }
+  response->status = NULL;
+  response->content_length = 0;
+  response->content_type = NULL;
+  response->body = NULL;
   return response;
 }
 
@@ -136,16 +139,21 @@ Response create_empty_response() {
  * @param status Status line of response.
  * @param msg String error message to return as response.
  * `NULL` if no error message is to be transmitted.
- * @param malloc_body `1` if the `msg` is dynamically allocated. `0` otherwise.
  * @return Returns an error-based `Response`.
  */
-Response create_error_response(char *status, char *msg,
-                               unsigned char malloc_body) {
-  Response response = {.status = status,
-                       .content_length = msg == NULL ? 0 : strlen(msg),
-                       .content_type = DEFAULT_MIME_TYPE,
-                       .body = msg,
-                       .malloc_body = malloc_body};
+Response *create_error_response(char *status, char *msg) {
+  Response *response = malloc(sizeof(Response));
+  if (!response) {
+    return NULL;
+  }
+  response->status = strdup(status);
+  response->content_length = strlen(msg);
+  response->content_type = DEFAULT_MIME_TYPE;
+  response->body = strdup(msg);
+  if (response->status == NULL || response->body == NULL) {
+    cleanup_response(response);
+    return NULL;
+  }
   return response;
 }
 
@@ -155,17 +163,16 @@ Response create_error_response(char *status, char *msg,
  * @param request `Request *` struct that stores request information.
  * @return Returns a Response object for the request.
  */
-Response handle_request(Request *request) {
+Response *handle_request(Request *request) {
   if (url_decode(request->path)) {
     // If bad string, return bad request.
-    return create_error_response(STATUS_400, "Bad Request: URL decode error.",
-                                 0);
+    return create_error_response(STATUS_400, "Bad Request: URL decode error.");
   }
   char *filepath = resolve_filepath(request->path);
   if (filepath == NULL) {
     // If unable to resolve filepath, return internal server error.
     return create_error_response(
-        STATUS_500, "Internal Server Error: Unable to resolve filepath.", 0);
+        STATUS_500, "Internal Server Error: Unable to resolve filepath.");
   }
 
   static char *root_directory;
@@ -176,15 +183,17 @@ Response handle_request(Request *request) {
   }
   if (strncmp(filepath, root_directory, root_dir_len) != 0) {
     // If resolved file path is outside of root directory, return forbidden.
-    return create_error_response(STATUS_403, "Forbidden Access.", 0);
+    return create_error_response(STATUS_403, "Forbidden Access.");
   }
 
-  Response response = create_empty_response();
-  if (get_response_body_from_file(filepath, &response)) {
-    cleanup_response(&response);
+  Response *response = create_empty_response();
+  if (get_response_body_from_file(filepath, response)) {
+    free(filepath);
+    cleanup_response(response);
     return create_error_response(STATUS_500,
-                                 "Failed to generate response body.", 0);
+                                 "Failed to generate response body.");
   }
+  free(filepath);
   return response;
 }
 
@@ -198,22 +207,19 @@ void cleanup_response(Response *response) {
   if (response == NULL) {
     return;
   }
-  if (response->malloc_body) {
-    // Free body if it is dynamically allocated.
-    free(response->body);
-  }
+  free(response->status);
+  free(response->content_type);
+  free(response->body);
+  free(response);
 }
 
 char *build_response_buffer(Response *response, size_t *size) {
-  Response r_val;
   if (response == NULL) {
-    r_val = create_error_response(STATUS_500, "Internal Server Error.", 0);
-  } else {
-    r_val = *response;
+    response = create_error_response(STATUS_500, "Internal Server Error.");
   }
   size_t header_len = RESPONSE_TEMPLATE_LEN + CONTENT_LENGTH_LEN +
-                      strlen(r_val.status) + strlen(r_val.content_type);
-  size_t buff_len = header_len + r_val.content_length;
+                      strlen(response->status) + strlen(response->content_type);
+  size_t buff_len = header_len + response->content_length;
   char r_buff = calloc(buff_len, sizeof(char));
   if (!r_buff) {
     return NULL;
@@ -223,7 +229,8 @@ char *build_response_buffer(Response *response, size_t *size) {
       "Content-Type: %s\r\n"
       "Content-Length: %Iu\r\n"
       "\r\n",
-      header_len, r_val.status, r_val.content_type, r_val.content_length);
+      header_len, response->status, response->content_type,
+      response->content_length);
   if (written < 0 || (size_t)written > buff_len) {
     free(r_buff);
     if (response == NULL) {
@@ -231,10 +238,10 @@ char *build_response_buffer(Response *response, size_t *size) {
     }
     return build_response_buffer(NULL, size);
   }
-  if (r_val.content_length > 0 && r_val.body != NULL) {
-    memcpy(r_buff + (size_t)written, r_val.body, r_val.content_length);
+  if (response->content_length > 0 && response->body != NULL) {
+    memcpy(r_buff + (size_t)written, response->body, response->content_length);
   }
-  *size = written + r_val.content_length;
+  *size = written + response->content_length;
   return r_buff;
 }
 

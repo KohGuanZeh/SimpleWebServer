@@ -26,11 +26,7 @@ char *get_root_directory() {
   GetModuleFileName(NULL, root_directory, MAX_PATH_LEN);
   char *last_fslash = strrchr(root_directory, '\\');
   if (last_fslash) {
-    char *next = last_fslash + 1;
-    while (*next != '\0') {
-      *next = '\0';
-      next++;
-    }
+    last_fslash[1] = '\0';
   }
   strcat(root_directory, ROOT_FOLDER);
   return root_directory;
@@ -42,36 +38,36 @@ char *get_root_directory() {
  * @return Returns the full path to index.html.
  */
 char *index_filepath() {
-  static char *index_filepath[MAX_PATH_LEN + 1] = {'\0'};
-  if (index_filepath[0] == NULL) {
-    char *root_directory = get_root_directory();
-    size_t root_dir_len = strlen(root_directory);
-    strncpy(index_filepath, root_directory, root_dir_len);
-    strcat(index_filepath, INDEX_FILE);
+  static char index_filepath[MAX_PATH_LEN + 1] = {'\0'};
+  if (index_filepath[0] == '\0') {
+    int written = snprintf(index_filepath, MAX_PATH_LEN + 1, "%s%s",
+                           get_root_directory(), INDEX_FILE);
+    if (written < 0 || written >= MAX_PATH_LEN) {
+      printf("Error: index filepath exceeds MAX_PATH_LEN.\n");
+      return NULL;
+    }
   }
   return index_filepath;
 }
 
 /**
  * @brief Normalizes the filepath to be an absolute path.
- * Function does not perform any memory allocation.
+ * Note that this function performs memory allocation.
  *
  * @param rel_path `char *` relative path.
  * @return Returns the normalized absolute path on success, NULL on error.
  */
 char *resolve_filepath(char *rel_path) {
-  static char *root_directory;
-  static size_t root_dir_len = 0;
-  if (root_dir_len == 0) {
-    root_directory = get_root_directory();
-    size_t root_dir_len = strlen(root_directory);
+  char *full_path = calloc(MAX_PATH_LEN + 1, sizeof(char));
+  int written = snprintf(full_path, MAX_PATH_LEN + 1, "%s%s",
+                         get_root_directory(), rel_path);
+  if (written < 0 || written >= MAX_PATH_LEN) {
+    printf("Error: full filepath exceeds MAX_PATH_LEN.\n");
+    free(full_path);
+    return NULL;
   }
-  size_t rel_path_len = strlen(rel_path);
-  char full_path[root_dir_len + rel_path_len + 1];
-  strncpy(full_path, root_directory, root_dir_len);
-  strcat(full_path, rel_path);
-  full_path[root_dir_len + rel_path_len] = '\0';
   if (!_fullpath(full_path, full_path, strlen(full_path))) {
+    free(full_path);
     return NULL;
   }
   return full_path;
@@ -157,7 +153,6 @@ unsigned char get_response_body_from_file(char *req_path, Response *response) {
     fclose(fp);
     return 1;
   }
-  response->malloc_body = 1;
 
   size_t len = fread(response->body, sizeof(char), buff_size, fp);
   if (ferror(fp)) {
@@ -168,6 +163,9 @@ unsigned char get_response_body_from_file(char *req_path, Response *response) {
   fclose(fp);
 
   response->content_length = len;
-  response->content_type = get_mime_type(filepath);
+  response->content_type = strdup(get_mime_type(filepath));
+  if (response->content_type == NULL) {
+    return 1;
+  }
   return 0;
 }

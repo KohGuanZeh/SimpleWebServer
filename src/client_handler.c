@@ -96,24 +96,24 @@ int handle_client(SOCKET client_socket) {
 
     printf("Content-Length: %Iu\n\n", request->content_length);
 
-    Response response = handle_request(request);
+    Response *response = handle_request(request);
     cleanup_request(request);
+    if (response == NULL) {
+      printf("Failed to allocate memory. Aborting...\n");
+      return 1;
+    }
 
     size_t send_size = 0;
     unsigned char clean_buffer = 1;
-    char *send_buffer = build_response_buffer(&response, &send_size);
-    cleanup_response(&response);
+    char *send_buffer = build_response_buffer(response, &send_size);
+    cleanup_response(response);
 
     if (send_buffer == NULL) {
-      clean_buffer = 0;
+      continue;
     }
 
     int send_result = send(client_socket, send_buffer, send_size, 0);
-
-    if (clean_buffer) {
-      cleanup_response_buffer(send_buffer);
-    }
-
+    cleanup_response_buffer(send_buffer);
     if (send_result == SOCKET_ERROR) {
       printf("send failed: %d\n", WSAGetLastError());
       return 1;
