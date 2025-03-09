@@ -126,7 +126,7 @@ char *get_mime_type(char *filepath) {
  * @param response `Response *` that stores response information.
  * @return Returns 0 on success, 1 on error.
  */
-unsigned char generate_response_body(char *req_path, Response *response) {
+unsigned char get_response_body_from_file(char *req_path, Response *response) {
   if (req_path == NULL || response == NULL) {
     return 1;
   }

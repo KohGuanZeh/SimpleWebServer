@@ -10,6 +10,6 @@ char *index_filepath();
 char *resolve_filepath(char *);
 char *get_mime_type(char *);
 
-unsigned char generate_response_body(char *, Response *);
+unsigned char get_response_body_from_file(char *, Response *);
 
 #endif

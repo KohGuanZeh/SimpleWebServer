@@ -6,7 +6,7 @@
 #include "fileutils.h"
 #include "strutils.h"
 
-#define RESPONSE_TEMPLATE_LEN 4096
+#define RESPONSE_TEMPLATE_LEN 64
 #define CONTENT_LENGTH_LEN 20
 #define REQ_LINE_DELIMITER " "
 #define HEADER_DELIMITER ": "
@@ -180,7 +180,7 @@ Response handle_request(Request *request) {
   }
 
   Response response = create_empty_response();
-  if (generate_response_body(filepath, &response)) {
+  if (get_response_body_from_file(filepath, &response)) {
     cleanup_response(&response);
     return create_error_response(STATUS_500,
                                  "Failed to generate response body.", 0);
@@ -205,12 +205,37 @@ void cleanup_response(Response *response) {
 }
 
 char *build_response_buffer(Response *response, size_t *size) {
-  Response response_value;
+  Response r_val;
   if (response == NULL) {
-    response_value =
-        create_error_response(STATUS_500, "Internal Server Error.", 0);
+    r_val = create_error_response(STATUS_500, "Internal Server Error.", 0);
+  } else {
+    r_val = *response;
   }
-  response_value = *response;
+  size_t header_len = RESPONSE_TEMPLATE_LEN + CONTENT_LENGTH_LEN +
+                      strlen(r_val.status) + strlen(r_val.content_type);
+  size_t buff_len = header_len + r_val.content_length;
+  char r_buff = calloc(buff_len, sizeof(char));
+  if (!r_buff) {
+    return NULL;
+  }
+  int written = snprintf(
+      "HTTP/1.0 %s\r\n"
+      "Content-Type: %s\r\n"
+      "Content-Length: %Iu\r\n"
+      "\r\n",
+      header_len, r_val.status, r_val.content_type, r_val.content_length);
+  if (written < 0 || (size_t)written > buff_len) {
+    free(r_buff);
+    if (response == NULL) {
+      return NULL;
+    }
+    return build_response_buffer(NULL, size);
+  }
+  if (r_val.content_length > 0 && r_val.body != NULL) {
+    memcpy(r_buff + (size_t)written, r_val.body, r_val.content_length);
+  }
+  *size = written + r_val.content_length;
+  return r_buff;
 }
 
 /**
