@@ -4,6 +4,5 @@
 char *split_string(char *, char *, char *);
 int hex_to_int(char);
 unsigned char url_decode(char *);
-void strcpy_newbuf(char *, char *);
 
 #endif

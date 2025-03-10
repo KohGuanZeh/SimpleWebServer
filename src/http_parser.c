@@ -68,10 +68,7 @@ int parse_request_line(Request *request, char *request_line) {
     printf("Failed to split for request line...\n");
     return 1;
   }
-  strcpy_newbuf(request->http_method, request_line);
-  if (request->http_method == NULL) {
-    return 1;
-  }
+  request->http_method = strdup(request_line);
   request_line = next_param;
 
   next_param = split_string(request_line, " ", &split);
@@ -79,9 +76,10 @@ int parse_request_line(Request *request, char *request_line) {
     printf("Failed to split for request line...\n");
     return 1;
   }
-  strcpy_newbuf(request->path, request_line);
-  strcpy_newbuf(request->http_version, next_param);
-  if (request->http_version == NULL || request->path == NULL) {
+  request->path = strdup(request_line);
+  request->http_version = strdup(next_param);
+  if (request->http_method == NULL || request->http_version == NULL ||
+      request->path == NULL) {
     return 1;
   }
   return 0;

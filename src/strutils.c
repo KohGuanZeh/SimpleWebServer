@@ -91,25 +91,3 @@ unsigned char url_decode(char *string) {
   }
   return 1;
 }
-
-/**
- * @brief Performs a strcpy after initializing a block of memory.
- * If the destination already exists, it will first free the block of memory
- * then newly allocate the memory to the pointer.
- *
- * @param dest `char *` destination for the string to copy.asm
- * @param src `char *` to copy from. Note that this must be a string or can lead
- * to memory errors.
- */
-void strcpy_newbuf(char *dest, char *src) {
-  if (dest) {
-    free(dest);
-  }
-  size_t len = strlen(src);
-  dest = malloc((len + 1) * sizeof(char));
-  if (dest == NULL) {
-    return;
-  }
-  strcpy(dest, src);
-  dest[len] = '\0';
-}
