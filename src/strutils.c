@@ -89,5 +89,5 @@ unsigned char url_decode(char *string) {
     string = '\0';
     string++;
   }
-  return 1;
+  return 0;
 }

@@ -8,8 +8,8 @@
       "args": [],
       "stopAtEntry": false,
       "externalConsole": true,
-      "cwd": ".",
-      "program": "build/Debug/outDebug",
+      "cwd": "c:/Users/kohgu/Desktop/Guan Zeh/Webserver/src",
+      "program": "c:/Users/kohgu/Desktop/Guan Zeh/Webserver/webserver.exe",
       "MIMode": "gdb",
       "miDebuggerPath": "gdb",
       "setupCommands": [

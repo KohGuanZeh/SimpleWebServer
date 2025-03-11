@@ -15,6 +15,7 @@
 #define STATUS_500 "500 Internal Server Error"
 #define STATUS_400 "400 Bad Request"
 #define STATUS_403 "403 Forbidden"
+#define STATUS_200 "200 OK"
 
 Response *create_empty_response();
 Response *create_error_response(char *, char *);
@@ -146,9 +147,10 @@ Response *create_error_response(char *status, char *msg) {
   }
   response->status = strdup(status);
   response->content_length = strlen(msg);
-  response->content_type = DEFAULT_MIME_TYPE;
+  response->content_type = strdup(DEFAULT_MIME_TYPE);
   response->body = strdup(msg);
-  if (response->status == NULL || response->body == NULL) {
+  if (response->status == NULL || response->content_type == NULL ||
+      response->body == NULL) {
     cleanup_response(response);
     return NULL;
   }
@@ -191,6 +193,7 @@ Response *handle_request(Request *request) {
     return create_error_response(STATUS_500,
                                  "Failed to generate response body.");
   }
+  response->status = strdup(STATUS_200);
   free(filepath);
   return response;
 }
@@ -222,13 +225,13 @@ char *build_response_buffer(Response *response, size_t *size) {
   if (r_buff == NULL) {
     return NULL;
   }
-  int written = snprintf(
-      "HTTP/1.0 %s\r\n"
-      "Content-Type: %s\r\n"
-      "Content-Length: %Iu\r\n"
-      "\r\n",
-      header_len, response->status, response->content_type,
-      response->content_length);
+  int written = snprintf(r_buff, header_len,
+                         "HTTP/1.0 %s\r\n"
+                         "Content-Type: %s\r\n"
+                         "Content-Length: %Iu\r\n"
+                         "\r\n",
+                         response->status, response->content_type,
+                         response->content_length);
   if (written < 0 || (size_t)written > buff_len) {
     free(r_buff);
     if (response == NULL) {

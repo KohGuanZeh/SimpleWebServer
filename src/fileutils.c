@@ -40,7 +40,7 @@ char *get_root_directory() {
 char *index_filepath() {
   static char index_filepath[MAX_PATH_LEN + 1] = {'\0'};
   if (index_filepath[0] == '\0') {
-    int written = snprintf(index_filepath, MAX_PATH_LEN + 1, "%s%s",
+    int written = snprintf(index_filepath, MAX_PATH_LEN + 1, "%s\\%s",
                            get_root_directory(), INDEX_FILE);
     if (written < 0 || written >= MAX_PATH_LEN) {
       printf("Error: index filepath exceeds MAX_PATH_LEN.\n");
@@ -58,15 +58,18 @@ char *index_filepath() {
  * @return Returns the normalized absolute path on success, NULL on error.
  */
 char *resolve_filepath(char *rel_path) {
-  char *full_path = calloc(MAX_PATH_LEN + 1, sizeof(char));
-  int written = snprintf(full_path, MAX_PATH_LEN + 1, "%s%s",
+  char abs_path[MAX_PATH_LEN + 1] = {'\0'};
+  int written = snprintf(abs_path, MAX_PATH_LEN + 1, "%s%s",
                          get_root_directory(), rel_path);
   if (written < 0 || written >= MAX_PATH_LEN) {
     printf("Error: full filepath exceeds MAX_PATH_LEN.\n");
-    free(full_path);
     return NULL;
   }
-  if (!_fullpath(full_path, full_path, strlen(full_path))) {
+  char *full_path = calloc(MAX_PATH_LEN + 1, sizeof(char));
+  if (full_path == NULL) {
+    return NULL;
+  }
+  if (_fullpath(full_path, abs_path, MAX_PATH_LEN) == NULL) {
     free(full_path);
     return NULL;
   }
@@ -123,12 +126,16 @@ char *get_mime_type(char *filepath) {
  * @return Returns 0 on success, 1 on error.
  */
 unsigned char get_response_body_from_file(char *req_path, Response *response) {
+  static size_t root_directory_len = 0;
+  if (root_directory_len == 0) {
+    root_directory_len = strlen(get_root_directory());
+  }
   if (req_path == NULL || response == NULL) {
     return 1;
   }
 
   char *filepath = req_path;
-  if (strcmp(req_path, get_root_directory()) == 0) {
+  if (strcmp(req_path + root_directory_len, "\\") == 0) {
     filepath = index_filepath();
   }
 
