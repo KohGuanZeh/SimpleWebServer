@@ -218,8 +218,8 @@ char *build_response_buffer(Response *response, size_t *size) {
   size_t header_len = RESPONSE_TEMPLATE_LEN + CONTENT_LENGTH_LEN +
                       strlen(response->status) + strlen(response->content_type);
   size_t buff_len = header_len + response->content_length;
-  char r_buff = calloc(buff_len, sizeof(char));
-  if (!r_buff) {
+  char *r_buff = calloc(buff_len, sizeof(char));
+  if (r_buff == NULL) {
     return NULL;
   }
   int written = snprintf(

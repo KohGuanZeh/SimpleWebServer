@@ -104,16 +104,15 @@ int handle_client(SOCKET client_socket) {
     }
 
     size_t send_size = 0;
-    unsigned char clean_buffer = 1;
-    char *send_buffer = build_response_buffer(response, &send_size);
+    char *response_buffer = build_response_buffer(response, &send_size);
     cleanup_response(response);
 
-    if (send_buffer == NULL) {
+    if (response_buffer == NULL) {
       continue;
     }
 
-    int send_result = send(client_socket, send_buffer, send_size, 0);
-    cleanup_response_buffer(send_buffer);
+    int send_result = send(client_socket, response_buffer, send_size, 0);
+    cleanup_response_buffer(response_buffer);
     if (send_result == SOCKET_ERROR) {
       printf("send failed: %d\n", WSAGetLastError());
       return 1;

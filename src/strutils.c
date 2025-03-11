@@ -73,7 +73,7 @@ unsigned char url_decode(char *string) {
       if (first_hex < 0 || second_hex < 0) {
         return 1;
       }
-      *string = first_hex << 4 + second_hex;
+      *string = (first_hex << 4) + second_hex;
       if (*string == '\0') {
         return 1;
       }
