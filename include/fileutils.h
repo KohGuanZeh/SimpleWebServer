@@ -3,7 +3,7 @@
 
 #include "http_types.h"
 
-#define DEFAULT_MIME_TYPE "text/plain"
+#define TEXT_MIME_TYPE "text/plain"
 
 char *get_root_directory();
 char *index_filepath();

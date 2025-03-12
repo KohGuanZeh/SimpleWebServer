@@ -1,0 +1,42 @@
+body {
+  background-color: #202020;
+  color: white;
+  font-family: 'Courier New', Courier, monospace;
+  max-width: 50%;
+  margin: 3rem auto;
+}
+
+.center {
+  max-width: fit-content;
+  margin: auto;
+}
+
+.title {
+  text-align: center;
+}
+
+p {
+  text-align: center;
+}
+
+button {
+  padding: .5rem;
+  font-family: 'Courier New', Courier, monospace;
+  background-color: #008cba;
+  color: white;
+  border-radius: .25rem;
+  border: none;
+  text-decoration: none;
+}
+
+button:hover {
+  cursor: pointer;
+}
+
+button:focus {
+  background-color: #0070a4;
+}
+
+button:active {
+  background-color: #0070a4;
+}

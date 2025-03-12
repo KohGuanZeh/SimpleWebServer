@@ -147,7 +147,7 @@ Response *create_error_response(char *status, char *msg) {
   }
   response->status = strdup(status);
   response->content_length = strlen(msg);
-  response->content_type = strdup(DEFAULT_MIME_TYPE);
+  response->content_type = strdup(TEXT_MIME_TYPE);
   response->body = strdup(msg);
   if (response->status == NULL || response->content_type == NULL ||
       response->body == NULL) {
